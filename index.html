@@ -163,6 +163,8 @@
   #definitions-column li { cursor: grab; user-select: none; }
   #definitions-column li:active { cursor: grabbing; }
   #definitions-column li.drag-over { border: 2px dashed var(--green); background: #edf7ef; }
+  #definitions-column li.selected { border: 2px solid var(--green); background: var(--mint); box-shadow: 0 0 0 2px rgba(23, 107, 82, 0.16); }
+  #matchMoveStatus { min-height: 20px; margin: -7px 0 12px; color: var(--muted); font-size: 13px; }
   #result { min-height: 24px; margin-top: 13px; font-weight: 700; }
 
   @media (max-width: 620px) {
@@ -210,12 +212,15 @@
     </div>
     <button class="action" id="reveal" hidden>Reveal pair</button>
     <div id="choices"></div>
+    <p class="hint" id="quizPrompt" aria-live="polite" hidden></p>
+    <button class="action" id="nextQuestion" hidden>Next question</button>
     <div id="progress">Quiz score | Total: 0 | Correct: 0 | Missed: 0</div>
     <div id="quizDetails"></div>
   </section>
 
   <section class="activity" id="matchingActivity" role="tabpanel" aria-labelledby="matchingTab" hidden>
     <p class="hint" id="matchingHint">Choose a study list to begin matching.</p>
+    <p id="matchMoveStatus" aria-live="polite">Drag definitions, or tap one and then tap another position to swap them.</p>
     <div class="matching-grid">
       <div class="column">
         <h2>Words</h2>
@@ -331,6 +336,7 @@ let quizMissed = new Set();
 let wordsList = [];
 let definitionsList = [];
 let draggedItemIndex = null;
+let selectedDefinitionIndex = null;
 
 function shuffle(items) {
   for (let index = items.length - 1; index > 0; index--) {
@@ -383,6 +389,8 @@ function loadList(listId) {
   document.getElementById("displayText").textContent = list ? "Choose a flashcard mode." : "Choose a list above.";
   document.getElementById("reveal").hidden = true;
   document.getElementById("choices").replaceChildren();
+  document.getElementById("quizPrompt").hidden = true;
+  document.getElementById("nextQuestion").hidden = true;
   document.getElementById("result").textContent = "";
   wordsList = [...entries];
   definitionsList = shuffle([...entries]);
@@ -428,6 +436,10 @@ function showQuiz() {
   document.getElementById("displayType").textContent = "Quiz";
   document.getElementById("displayText").textContent = currentEntry.word;
   document.getElementById("reveal").hidden = true;
+  const quizPrompt = document.getElementById("quizPrompt");
+  quizPrompt.hidden = false;
+  quizPrompt.textContent = "Choose the definition that matches.";
+  document.getElementById("nextQuestion").hidden = true;
   const choices = document.getElementById("choices");
   choices.replaceChildren();
   const answers = shuffle([
@@ -445,6 +457,10 @@ function showQuiz() {
       (correct ? quizCorrect : quizMissed).add(currentEntry.word);
       updateProgress();
       choices.querySelectorAll("button").forEach(choice => { choice.disabled = true; });
+      quizPrompt.textContent = correct
+        ? "Correct. Ready for the next question?"
+        : `Not quite. The correct answer is: ${currentEntry.definition}`;
+      document.getElementById("nextQuestion").hidden = false;
     });
     choices.appendChild(button);
   }
@@ -461,7 +477,17 @@ function renderMatching() {
   definitionsList.forEach((entry, index) => {
     const item = document.createElement("li");
     item.draggable = true;
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-pressed", "false");
     item.textContent = entry.definition;
+    item.addEventListener("click", () => selectDefinition(index));
+    item.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectDefinition(index);
+      }
+    });
     item.addEventListener("dragstart", event => {
       draggedItemIndex = index;
       event.dataTransfer.effectAllowed = "move";
@@ -484,6 +510,32 @@ function renderMatching() {
     definitionsContainer.appendChild(item);
   });
   alignMatchingRows();
+}
+
+function selectDefinition(index) {
+  const status = document.getElementById("matchMoveStatus");
+  if (selectedDefinitionIndex === null) {
+    selectedDefinitionIndex = index;
+    const selectedItem = definitionsContainer.children[index];
+    selectedItem.classList.add("selected");
+    selectedItem.setAttribute("aria-pressed", "true");
+    status.textContent = `Definition ${index + 1} selected. Tap another position to swap, or tap again to cancel.`;
+    return;
+  }
+
+  if (selectedDefinitionIndex === index) {
+    selectedDefinitionIndex = null;
+    definitionsContainer.children[index].classList.remove("selected");
+    definitionsContainer.children[index].setAttribute("aria-pressed", "false");
+    status.textContent = "Selection cleared. Tap one definition, then another position to swap them.";
+    return;
+  }
+
+  [definitionsList[selectedDefinitionIndex], definitionsList[index]] =
+    [definitionsList[index], definitionsList[selectedDefinitionIndex]];
+  selectedDefinitionIndex = null;
+  renderMatching();
+  status.textContent = "Definitions swapped. Continue arranging them, then check your answers.";
 }
 
 function alignMatchingRows() {
@@ -524,6 +576,7 @@ document.getElementById("modeWord").addEventListener("click", showWord);
 document.getElementById("modeDef").addEventListener("click", showDefinition);
 document.getElementById("modeMixed").addEventListener("click", showMixed);
 document.getElementById("modeQuiz").addEventListener("click", showQuiz);
+document.getElementById("nextQuestion").addEventListener("click", showQuiz);
 document.getElementById("reveal").addEventListener("click", () => {
   if (!currentEntry) return;
   document.getElementById("displayType").textContent = "Answer";
