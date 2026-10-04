@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Deck</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1c302b;
+    --muted: #62716c;
+    --paper: #f4f6f0;
+    --panel: #ffffff;
+    --line: #d7ded7;
+    --green: #176b52;
+    --green-dark: #10513e;
+    --mint: #e4f2e9;
+    --amber: #f3c66b;
+    --red: #a53a34;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image: radial-gradient(#dce6dc 0.7px, transparent 0.7px);
+    background-size: 16px 16px;
+    font-family: "Avenir Next", Avenir, "Trebuchet MS", sans-serif;
+  }
+
+  main {
+    width: min(920px, calc(100% - 32px));
+    margin: 30px auto;
+  }
+
+  .topline {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+  }
+
+  h1 { margin: 0; font-size: 30px; }
+  .eyebrow { margin: 0 0 5px; color: var(--green); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+  .deck-picker { display: grid; gap: 6px; min-width: min(300px, 100%); }
+  label { color: var(--muted); font-size: 13px; font-weight: 700; }
+  select, button { font: inherit; }
+
+  select {
+    min-height: 42px;
+    border: 1px solid #aebbb0;
+    border-radius: 4px;
+    padding: 8px 34px 8px 11px;
+    color: var(--ink);
+    background: var(--panel);
+  }
+
+  .activity-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 20px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    margin: 0 0 -1px;
+    border: 1px solid transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 4px 4px 0 0;
+    padding: 10px 15px;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .tab[aria-selected="true"] { border-bottom-color: var(--green); color: var(--green-dark); background: #edf3eb; }
+  .activity { padding-top: 20px; }
+  .activity[hidden] { display: none; }
+  .hint { margin: 0 0 15px; color: var(--muted); font-size: 14px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .action {
+    min-height: 40px;
+    border: 1px solid var(--green-dark);
+    border-radius: 4px;
+    padding: 8px 13px;
+    color: white;
+    background: var(--green);
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .action:hover { background: var(--green-dark); }
+  .action.secondary { color: var(--green-dark); background: white; }
+  .action.secondary:hover { background: var(--mint); }
+
+  .flashcard {
+    min-height: 190px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--amber);
+    border-radius: 5px;
+    padding: 22px;
+    background: var(--panel);
+    text-align: center;
+  }
+
+  #displayType { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+  #displayText { max-width: 740px; font-size: 22px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+  #reveal { margin: 12px auto 0; display: block; }
+  #reveal[hidden] { display: none; }
+  #choices { display: grid; gap: 8px; margin-top: 16px; }
+
+  .choice {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 11px 13px;
+    color: var(--ink);
+    background: white;
+    cursor: pointer;
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  .choice:hover:not(:disabled) { border-color: var(--green); background: var(--mint); }
+  .choice:disabled { cursor: default; }
+  .choice.correct { border-color: #6a9d77; background: #e4f2e9; }
+  .choice.incorrect { border-color: #c77e76; background: #f8e8e5; }
+  #progress { margin-top: 17px; font-weight: 700; }
+  #quizDetails { margin-top: 5px; color: var(--muted); font-size: 13px; }
+
+  .matching-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.8fr) minmax(0, 2fr);
+    gap: 14px;
+  }
+
+  .column h2 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; }
+  .column ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+  .column li {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 9px 11px;
+    background: white;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  #words-column li { border-color: #a9c6b4; background: var(--mint); font-weight: 700; }
+  #definitions-column li { cursor: grab; user-select: none; }
+  #definitions-column li:active { cursor: grabbing; }
+  #definitions-column li.drag-over { border: 2px dashed var(--green); background: #edf7ef; }
+  #result { min-height: 24px; margin-top: 13px; font-weight: 700; }
+
+  @media (max-width: 620px) {
+    main { margin: 18px auto; }
+    .topline { align-items: stretch; flex-direction: column; gap: 14px; }
+    .deck-picker { min-width: 0; }
+    h1 { font-size: 26px; }
+    .matching-grid { grid-template-columns: minmax(105px, 0.7fr) minmax(0, 1.5fr); gap: 8px; }
+    .column li { padding: 8px; font-size: 13px; }
+    .tab { flex: 1; padding: 10px 6px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="topline">
+    <div>
+      <p class="eyebrow">Study deck</p>
+      <h1>Words &amp; meanings</h1>
+    </div>
+    <div class="deck-picker">
+      <label for="listSelect">Study list</label>
+      <select id="listSelect">
+        <option value="">Choose a list...</option>
+      </select>
+    </div>
+  </header>
+
+  <nav class="activity-tabs" aria-label="Study activity" role="tablist">
+    <button class="tab" id="flashcardsTab" role="tab" aria-selected="true" aria-controls="flashcardsActivity">Flashcards</button>
+    <button class="tab" id="matchingTab" role="tab" aria-selected="false" aria-controls="matchingActivity">Matching</button>
+  </nav>
+
+  <section class="activity" id="flashcardsActivity" role="tabpanel" aria-labelledby="flashcardsTab">
+    <p class="hint" id="flashcardHint">Choose a study list to begin.</p>
+    <div class="controls" aria-label="Flashcard modes">
+      <button class="action secondary" id="modeWord">Random word</button>
+      <button class="action secondary" id="modeDef">Random definition</button>
+      <button class="action secondary" id="modeMixed">Mixed mode</button>
+      <button class="action" id="modeQuiz">Multiple choice</button>
+    </div>
+    <div class="flashcard" aria-live="polite">
+      <div id="displayType">No list selected</div>
+      <div id="displayText">Choose a list above.</div>
+    </div>
+    <button class="action" id="reveal" hidden>Reveal pair</button>
+    <div id="choices"></div>
+    <div id="progress">Quiz score | Total: 0 | Correct: 0 | Missed: 0</div>
+    <div id="quizDetails"></div>
+  </section>
+
+  <section class="activity" id="matchingActivity" role="tabpanel" aria-labelledby="matchingTab" hidden>
+    <p class="hint" id="matchingHint">Choose a study list to begin matching.</p>
+    <div class="matching-grid">
+      <div class="column">
+        <h2>Words</h2>
+        <ul id="words-column"></ul>
+      </div>
+      <div class="column">
+        <h2>Definitions</h2>
+        <ul id="definitions-column"></ul>
+      </div>
+    </div>
+    <div class="controls" style="margin-top: 16px">
+      <button class="action" id="check-btn">Check answers</button>
+      <button class="action secondary" id="shuffle-btn">Shuffle definitions</button>
+    </div>
+    <div id="result" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+const studyLists = {
+  scienceMatter: {
+    category: "Science",
+    title: "Matter",
+    pairs: [
+      ["Odor", "How an object smells."],
+      ["Boiling and Condensation point", "The temperature at which a liquid turns to gas or vice versa."],
+      ["Texture", "How something feels."],
+      ["Luster", "How shiny a substance is."],
+      ["Hardness", "How soft or hard an object is."],
+      ["Conductivity", "How well a substance allows heat or electricity to flow through it."],
+      ["Density", "How much mass is within a volume; how compact the material is."],
+      ["Malleability", "How easily a substance can be formed into new shapes."],
+      ["Magnetism", "Whether a substance attracts or repels metals."],
+      ["Color", "How we perceive an object to look."],
+      ["Solubility", "How well a substance dissolves in another substance."],
+      ["Melting and Freezing point", "The temperature at which a solid turns into a liquid or vice versa."],
+      ["States of Matter", "Whether a substance is solid, liquid, or gas."],
+      ["Ductility", "How well a substance can be pulled into thin wires."]
+    ]
+  },
+  scienceWaves: {
+    category: "Science",
+    title: "Waves",
+    pairs: [
+      ["Wave", "A disturbance that transfers energy from one place to another."],
+      ["Mechanical Wave", "A wave that requires a medium to travel through."],
+      ["Electromagnetic Wave", "A wave that can travel through empty space and does not need a medium."],
+      ["Transverse", "A wave where particles of the medium move perpendicular to the direction the wave travels."],
+      ["Longitudinal", "A wave where particles of the medium move parallel to the direction the wave travels."],
+      ["Medium", "The material or substance through which a wave travels."],
+      ["Frequency", "The number of waves that pass a point in a certain amount of time."],
+      ["Wavelength", "The distance between two identical points on a wave."],
+      ["Amplitude", "The height of a wave, measuring its energy or strength."],
+      ["Crest", "The highest point of a transverse wave."],
+      ["Trough", "The lowest point of a transverse wave."],
+      ["Compression", "The part of a longitudinal wave where particles are pushed close together."],
+      ["Rarefaction", "The part of a longitudinal wave where particles are spread farther apart."]
+    ]
+  },
+  socialGovernment: {
+    category: "Social Studies",
+    title: "Government",
+    pairs: [
+      ["Acropolis", "The defensible hill above the city-state where temples were built."],
+      ["Agora", "The outdoor market and meeting place in the city-state."],
+      ["Monarchy", "A government where one person holds power, usually inheriting it from their parents."],
+      ["Oligarchy", "A government where only a few people, usually the rich, hold power."],
+      ["Tyrant", "A ruler with complete power, often used harshly or unfairly."],
+      ["Democracy", "A government where people share power, usually by voting."],
+      ["Assembly", "A group of citizens in ancient Greece who met and created laws."],
+      ["Citizen", "A member of a country with certain rights and responsibilities."],
+      ["Aristocrat", "A member of the most privileged class, usually the rich and powerful."],
+      ["Polytheism", "A religion with many gods, such as Greek mythology."]
+    ]
+  },
+  vocabularyNew: {
+    category: "Vocabulary",
+    title: "New Words",
+    pairs: [
+      ["Metabolism", "Noun. The chemical processes that release energy from food and support growth."],
+      ["Moot", "Adjective. Unimportant or irrelevant."],
+      ["Futile", "Adjective. Having no useful or meaningful result."],
+      ["Delirious", "Adjective. Temporarily confused, often because of fever or shock."],
+      ["Moderate", "Adjective. Kept within a certain limit."],
+      ["Prowess", "Noun. Strength or courage."],
+      ["Frantic", "Adjective. Done quickly and nervously."],
+      ["Anxiety", "Noun. An uneasy, worried feeling."],
+      ["Inundate", "Verb. To overwhelm with a great amount of something."],
+      ["Restrictive", "Adjective. Limiting in some way."],
+      ["Exhibition", "Noun. An organized presentation or show."],
+      ["Precaution", "Noun. An action taken to avoid possible danger."],
+      ["Suede", "Noun. Leather treated so that it is fuzzy and soft."],
+      ["Mistrust", "Verb. To be without confidence or trust."],
+      ["Embarrass", "Verb. To cause someone to feel self-conscious or uncomfortable."],
+      ["Latch", "Verb. To hold onto something or get hold of something."],
+      ["Barren", "Adjective. Empty or unable to support growth."]
+    ]
+  }
+};
+
+const listSelect = document.getElementById("listSelect");
+const flashcardsActivity = document.getElementById("flashcardsActivity");
+const matchingActivity = document.getElementById("matchingActivity");
+const wordsContainer = document.getElementById("words-column");
+const definitionsContainer = document.getElementById("definitions-column");
+let entries = [];
+let wordQueue = [];
+let definitionQueue = [];
+let mixedQueue = [];
+let currentEntry = null;
+let quizCorrect = new Set();
+let quizMissed = new Set();
+let wordsList = [];
+let definitionsList = [];
+let draggedItemIndex = null;
+
+function shuffle(items) {
+  for (let index = items.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+  }
+  return items;
+}
+
+function addListOptions() {
+  const groups = new Map();
+  for (const [id, list] of Object.entries(studyLists)) {
+    if (!groups.has(list.category)) {
+      const group = document.createElement("optgroup");
+      group.label = list.category;
+      groups.set(list.category, group);
+      listSelect.appendChild(group);
+    }
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = list.title;
+    groups.get(list.category).appendChild(option);
+  }
+}
+
+function updateProgress() {
+  document.getElementById("progress").textContent =
+    `Quiz score | Total: ${entries.length} | Correct: ${quizCorrect.size} | Missed: ${quizMissed.size}`;
+  document.getElementById("quizDetails").textContent =
+    `Correct: ${[...quizCorrect].join(", ") || "-"} | Missed: ${[...quizMissed].join(", ") || "-"}`;
+}
+
+function loadList(listId) {
+  const list = studyLists[listId];
+  entries = list ? list.pairs.map(([word, definition]) => ({ word, definition })) : [];
+  wordQueue = shuffle([...entries]);
+  definitionQueue = shuffle([...entries]);
+  mixedQueue = shuffle([...entries]);
+  quizCorrect.clear();
+  quizMissed.clear();
+  currentEntry = null;
+
+  document.getElementById("flashcardHint").textContent = list
+    ? `${list.category} / ${list.title} · ${entries.length} terms`
+    : "Choose a study list to begin.";
+  document.getElementById("matchingHint").textContent = list
+    ? `${list.category} / ${list.title} · Drag definitions into the same order as the words.`
+    : "Choose a study list to begin matching.";
+  document.getElementById("displayType").textContent = list ? "List loaded" : "No list selected";
+  document.getElementById("displayText").textContent = list ? "Choose a flashcard mode." : "Choose a list above.";
+  document.getElementById("reveal").hidden = true;
+  document.getElementById("choices").replaceChildren();
+  document.getElementById("result").textContent = "";
+  wordsList = [...entries];
+  definitionsList = shuffle([...entries]);
+  renderMatching();
+  updateProgress();
+}
+
+function nextCard(queue) {
+  if (queue.length === 0) queue.push(...shuffle([...entries]));
+  return queue.pop();
+}
+
+function displayCard(type, text) {
+  document.getElementById("displayType").textContent = type;
+  document.getElementById("displayText").textContent = text;
+  document.getElementById("reveal").hidden = false;
+  document.getElementById("choices").replaceChildren();
+}
+
+function showWord() {
+  if (!entries.length) return;
+  currentEntry = nextCard(wordQueue);
+  displayCard("Word", currentEntry.word);
+}
+
+function showDefinition() {
+  if (!entries.length) return;
+  currentEntry = nextCard(definitionQueue);
+  displayCard("Definition", currentEntry.definition);
+}
+
+function showMixed() {
+  if (!entries.length) return;
+  currentEntry = nextCard(mixedQueue);
+  displayCard(Math.random() < 0.5 ? "Word" : "Definition", "");
+  document.getElementById("displayText").textContent =
+    document.getElementById("displayType").textContent === "Word" ? currentEntry.word : currentEntry.definition;
+}
+
+function showQuiz() {
+  if (!entries.length) return;
+  currentEntry = nextCard(mixedQueue);
+  document.getElementById("displayType").textContent = "Quiz";
+  document.getElementById("displayText").textContent = currentEntry.word;
+  document.getElementById("reveal").hidden = true;
+  const choices = document.getElementById("choices");
+  choices.replaceChildren();
+  const answers = shuffle([
+    currentEntry.definition,
+    ...shuffle(entries.filter(entry => entry !== currentEntry).map(entry => entry.definition)).slice(0, 3)
+  ]);
+
+  for (const answer of answers) {
+    const button = document.createElement("button");
+    button.className = "choice";
+    button.textContent = answer;
+    button.addEventListener("click", () => {
+      const correct = answer === currentEntry.definition;
+      button.classList.add(correct ? "correct" : "incorrect");
+      (correct ? quizCorrect : quizMissed).add(currentEntry.word);
+      updateProgress();
+      choices.querySelectorAll("button").forEach(choice => { choice.disabled = true; });
+    });
+    choices.appendChild(button);
+  }
+}
+
+function renderMatching() {
+  wordsContainer.replaceChildren();
+  definitionsContainer.replaceChildren();
+  for (const entry of wordsList) {
+    const item = document.createElement("li");
+    item.textContent = entry.word;
+    wordsContainer.appendChild(item);
+  }
+  definitionsList.forEach((entry, index) => {
+    const item = document.createElement("li");
+    item.draggable = true;
+    item.textContent = entry.definition;
+    item.addEventListener("dragstart", event => {
+      draggedItemIndex = index;
+      event.dataTransfer.effectAllowed = "move";
+    });
+    item.addEventListener("dragover", event => {
+      event.preventDefault();
+      if (index !== draggedItemIndex) item.classList.add("drag-over");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+    item.addEventListener("drop", event => {
+      event.preventDefault();
+      item.classList.remove("drag-over");
+      if (draggedItemIndex !== null && draggedItemIndex !== index) {
+        [definitionsList[draggedItemIndex], definitionsList[index]] =
+          [definitionsList[index], definitionsList[draggedItemIndex]];
+        renderMatching();
+      }
+      draggedItemIndex = null;
+    });
+    definitionsContainer.appendChild(item);
+  });
+  alignMatchingRows();
+}
+
+function alignMatchingRows() {
+  const wordItems = [...wordsContainer.children];
+  const definitionItems = [...definitionsContainer.children];
+  for (const item of [...wordItems, ...definitionItems]) item.style.height = "";
+  if (!wordItems.length || !wordItems[0].getBoundingClientRect().width) return;
+
+  wordItems.forEach((wordItem, index) => {
+    const definitionItem = definitionItems[index];
+    const rowHeight = Math.max(wordItem.offsetHeight, definitionItem.offsetHeight);
+    wordItem.style.height = `${rowHeight}px`;
+    definitionItem.style.height = `${rowHeight}px`;
+  });
+}
+
+function checkMatching() {
+  const correct = wordsList.every((entry, index) => entry === definitionsList[index]);
+  const result = document.getElementById("result");
+  result.textContent = correct ? "Everything matches." : "Not quite. Rearrange the definitions and check again.";
+  result.style.color = correct ? "var(--green-dark)" : "var(--red)";
+}
+
+function setActivity(activity) {
+  const showFlashcards = activity === "flashcards";
+  flashcardsActivity.hidden = !showFlashcards;
+  matchingActivity.hidden = showFlashcards;
+  document.getElementById("flashcardsTab").setAttribute("aria-selected", String(showFlashcards));
+  document.getElementById("matchingTab").setAttribute("aria-selected", String(!showFlashcards));
+  if (!showFlashcards) alignMatchingRows();
+}
+
+addListOptions();
+listSelect.addEventListener("change", event => loadList(event.target.value));
+document.getElementById("flashcardsTab").addEventListener("click", () => setActivity("flashcards"));
+document.getElementById("matchingTab").addEventListener("click", () => setActivity("matching"));
+document.getElementById("modeWord").addEventListener("click", showWord);
+document.getElementById("modeDef").addEventListener("click", showDefinition);
+document.getElementById("modeMixed").addEventListener("click", showMixed);
+document.getElementById("modeQuiz").addEventListener("click", showQuiz);
+document.getElementById("reveal").addEventListener("click", () => {
+  if (!currentEntry) return;
+  document.getElementById("displayType").textContent = "Answer";
+  document.getElementById("displayText").textContent = `${currentEntry.word} = ${currentEntry.definition}`;
+});
+document.getElementById("check-btn").addEventListener("click", checkMatching);
+document.getElementById("shuffle-btn").addEventListener("click", () => {
+  definitionsList = shuffle([...entries]);
+  document.getElementById("result").textContent = "";
+  renderMatching();
+});
+window.addEventListener("resize", alignMatchingRows);
+loadList("");
+</script>
+</body>
+</html>
